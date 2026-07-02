@@ -102,4 +102,10 @@ public class notificationService {
 		
 	}
 
+	public notificationEntity findByNotifyId(int id) {
+		// TODO Auto-generated method stub
+		notificationEntity details = repo.findById(id).orElseThrow(()-> new RuntimeException("Notification not found for ID: " + id));
+		return details;
+	}
+
 }
