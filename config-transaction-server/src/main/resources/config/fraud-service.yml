@@ -1,0 +1,38 @@
+server:
+  port: 8084
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+      
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+spring:
+  #JDBC
+  datasource:
+    url: jdbc:mysql://localhost:3306/transactionProcessingSystem
+    username: root
+    password: Balajisai@1234#
+  #hibernate (JPA)
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+  #kafka config & Producer serialization
+  kafka:
+    bootstrap:
+      servers: 9093
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+       spring.json.trusted.packages: "*"
+fraud:
+  count: 5
+  thresholdAmount: 1
+    

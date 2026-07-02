@@ -1,0 +1,49 @@
+server:
+  port: 8082
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+      
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+spring:
+  #JDBC
+  datasource:
+    url: jdbc:mysql://localhost:3306/transactionProcessingSystem
+    username: root
+    password: Balajisai@1234#
+  #hibernate (JPA)
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+  #kafka config & Producer serialization
+  kafka:
+    bootstrap:
+      servers: 9093
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+       spring.json.trusted.packages: "*"
+#Kafka topics config
+success:
+  kafka:
+    topic-name: "createTransactionSuccess"
+    partitions: 3
+    replication-factor: 1
+fail:
+ kafka:
+    topic-name: "createTransactionFailed"
+    partitions: 3
+    replication-factor: 1
+    
