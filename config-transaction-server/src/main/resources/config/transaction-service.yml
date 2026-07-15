@@ -46,4 +46,17 @@ fail:
     topic-name: "createTransactionFailed"
     partitions: 3
     replication-factor: 1
+#resilience4j    
+resilience4j:
+   circuitbreaker:
+    configs:
+      default:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        recordExceptions:
+          - org.springframework.web.reactive.function.client.WebClientResponseException
+          - java.lang.IllegalStateException
+          - java.io.IOException
     

@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -24,6 +25,9 @@ import com.transaction.transaction_service.dto.fraudResponseDto;
 import com.transaction.transaction_service.dto.transactionCreateDto;
 import com.transaction.transaction_service.entity.transactionCreateEntity;
 import com.transaction.transaction_service.repository.transactionRepository;
+
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 
 @Service
 public class transactionCreateService {
@@ -44,7 +48,12 @@ public class transactionCreateService {
 	
 	@Autowired
 	private KafkaTemplate<String, Object> kafkaTemplate;
-
+	
+	  @Autowired
+	    @Lazy
+	 private static transactionCreateService self;
+	 
+	@CircuitBreaker(name = "transactionCircuitBreaker",fallbackMethod = "fetchAccountFallback")
 	public accountValidateResponseDto getValidatedAccount(accountsValidateDto validateDto) {
 		try {
 			// 1. Call the http exchange client
@@ -62,6 +71,12 @@ public class transactionCreateService {
 		}
 	}
 
+	public accountValidateResponseDto fetchAccountFallback(transactionCreateDto dto, CallNotPermittedException Exception) {
+		accountValidateResponseDto fail= new accountValidateResponseDto();
+		fail.setValid("service_unavailable");
+		return fail;
+	}
+   
 	public transactionCreateEntity createTransaction(transactionCreateDto dto) {
 		transactionCreateEntity transactEntity = new transactionCreateEntity();
 		transactEntity.setTransactionId(10000 + new Random().nextInt(90000));
@@ -78,12 +93,27 @@ public class transactionCreateService {
 		accountDto.setToAccount(dto.getToAccount());
 		accountDto.setTransactionId(transactEntity.getTransactionId());
 		try {
-			accountValidateResponseDto validateAcc = this.getValidatedAccount(accountDto);
+			self = this;
+			accountValidateResponseDto validateAcc = self.getValidatedAccount(accountDto);
 			LOGGER.info("validate entity", validateAcc);
 			if (validateAcc == null ) {
 				transactEntity.setStatus("Failed due to technical issue1.");
 			} else {
-				if (validateAcc.getValid().equals("true")) {
+				if(validateAcc.getValid().equals("service_unavailable")) {
+					transactEntity.setLastUpdatedTime(new Date());
+					transactEntity.setStatus("Transaction could not be processed. Please try again after sometime.");
+					Map<String, Object> fail = new HashMap<>();
+					fail.put("transactionId", transactEntity.getTransactionId());
+					fail.put("fromAccount", transactEntity.getFromAccount());
+					fail.put("toAccount", transactEntity.getToAccount());
+					fail.put("amount", transactEntity.getAmount());
+					fail.put("status", "Failed");
+					fail.put("timeStamp", transactEntity.getCreatedDate());
+					fail.put("customerId", validateAcc.getCustomerId());
+					System.out.println(fail);
+					kafkaTemplate.send(transactionfailed, Integer.toString(transactEntity.getTransactionId()), fail);
+				}
+			else if (validateAcc.getValid().equals("true")) {
 					transactEntity.setStatus("Proccessed");
 					transactEntity.setLastUpdatedTime(new Date());
 					Map<String, Object> success = new HashMap<>();
@@ -112,7 +142,7 @@ public class transactionCreateService {
 					fail.put("fromAccount", transactEntity.getFromAccount());
 					fail.put("toAccount", transactEntity.getToAccount());
 					fail.put("amount", transactEntity.getAmount());
-					fail.put("status", "Success");
+					fail.put("status", "Failed");
 					fail.put("timeStamp", transactEntity.getCreatedDate());
 					fail.put("customerId", validateAcc.getCustomerId());
 					System.out.println(fail);

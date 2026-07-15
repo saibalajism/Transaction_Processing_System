@@ -12,6 +12,5 @@ public interface accountsClient {
 	
 	@PostExchange("/account/validate")
 	public accountValidateResponseDto validateAccountTransaction(@RequestBody accountsValidateDto accountId);
-	
 
 }

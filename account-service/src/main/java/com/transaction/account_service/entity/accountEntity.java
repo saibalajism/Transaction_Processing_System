@@ -40,5 +40,8 @@ public class accountEntity {
 	
 	@Column(name="mailId")
 	private String emailId;
+	
+	@Column(name="username")
+	private String username;
 
 }
